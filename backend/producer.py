@@ -1,31 +1,36 @@
 from kafka import KafkaProducer
-from google.transit import gtfs_realtime_pb2
 import requests
 import time
 import json
+from datetime import datetime
+import os
 
 producer = KafkaProducer(
     bootstrap_servers='localhost:9092',
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 
-FEED_URL = "https://api-v3.mbta.com/gtfs/vehicle_positions.pb"
+FEED_URL = f"https://developer.trimet.org/ws/v2/vehicles?appID={os.getenv("API_ID")}"
 
 while True:
-    feed = gtfs_realtime_pb2.FeedMessage()
     response = requests.get(FEED_URL)
-    feed.ParseFromString(response.content)
 
-    for entity in feed.entity:
-        if entity.HasField('vehicle'):
-            v = entity.vehicle
+    if response.status_code == 200:
+        data = response.json()
+        vehicles = data.get("resultSet", {}).get("vehicle", [])
+        for vehicle in vehicles:
+            timestamp_seconds = vehicle.get("time") / 1000.0
+            timestamp_dt = datetime.utcfromtimestamp(timestamp_seconds)
+            timestamp_iso = timestamp_dt.isoformat()
+
             message = {
-                "vehicle_id": v.vehicle.id,
-                "route_id": v.trip.route_id,
-                "latitude": v.position.latitude,
-                "longitude": v.position.longitude,
-                "timestamp": v.timestamp
+                "vehicle_id": vehicle.get("vehicleID"),
+                "route_id": vehicle.get("routeNumber"),
+                "latitude": vehicle.get("latitude"),
+                "longitude": vehicle.get("longitude"),
+                "timestamp": timestamp_iso
             }
 
             producer.send("gps_data", message)
-    time.sleep(10)
+        
+    time.sleep(3)
