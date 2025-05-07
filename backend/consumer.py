@@ -16,8 +16,12 @@ for message in consumer:
     data = message.value
     print(f"Received: {data}")
 
-    timestamp = datetime.strptime(data['timestamp'], "%Y-%m-%dT%H:%M:%S.%f")
-    timestamp_unix = int(timestamp.timestamp()) 
+    try:
+        timestamp = datetime.strptime(data['timestamp'], "%Y-%m-%dT%H:%M:%S.%f")
+    except ValueError:
+        timestamp = datetime.strptime(data['timestamp'], "%Y-%m-%dT%H:%M:%S")
+    
+    timestamp_unix = int(timestamp.timestamp())
     
     cursor.execute("""
         INSERT INTO vehicle_locations (vehicle_id, location, timestamp)
