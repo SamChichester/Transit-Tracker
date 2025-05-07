@@ -8,7 +8,7 @@ consumer = KafkaConsumer(
     value_deserializer=lambda m: json.loads(m.decode('utf-8'))
 )
 
-conn = psycopg2.connect(dbname='transit', user='sam')
+conn = psycopg2.connect(dbname='transit', user='Sam')
 cursor = conn.cursor()
 
 for message in consumer:
