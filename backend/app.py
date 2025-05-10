@@ -8,7 +8,9 @@ CORS(app)
 conn = psycopg2.connect(
     dbname="transit",
     user="Sam",
-    host="localhost"
+    password="password",
+    host="postgres",
+    port=5432
 )
 cursor = conn.cursor()
 
@@ -36,4 +38,4 @@ def get_locations():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5000)

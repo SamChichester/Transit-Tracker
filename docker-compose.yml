@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgis/postgis:latest
+    platform: linux/amd64
+    container_name: postgres
+    environment:
+      POSTGRES_DB: transit
+      POSTGRES_USER: Sam
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: kafka
+    environment:
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmno123456
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/bitnami/kafka
+
+  backend:
+    build: ./backend
+    container_name: backend
+    ports:
+      - "5000:5000"
+    depends_on:
+      - kafka
+      - postgres
+    environment:
+      - DB_NAME=transit
+      - DB_USER=Sam
+      - DB_PASSWORD=password
+      - DB_HOST=postgres
+    entrypoint: ["./wait-for-it.sh", "postgres:5432", "--timeout=30", "--", "python", "app.py"]
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "8000:80"
+
+  producer:
+    build: ./backend
+    container_name: producer
+    depends_on:
+      - kafka
+    environment:
+      - API_ID=${API_ID}
+    entrypoint: ["./wait-for-it.sh", "kafka:9092", "--timeout=30", "--", "python", "producer.py"]
+
+  consumer:
+    build: ./backend
+    container_name: consumer
+    depends_on:
+      - kafka
+      - postgres
+    entrypoint: ["./wait-for-it.sh", "kafka:9092", "--timeout=30", "--", "python", "consumer.py"]
+
+volumes:
+  pg_data:
+  kafka_data:

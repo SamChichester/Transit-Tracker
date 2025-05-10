@@ -5,11 +5,17 @@ from datetime import datetime
 
 consumer = KafkaConsumer(
     'gps_data',
-    bootstrap_servers='localhost:9092',
+    bootstrap_servers='kafka:9092',
     value_deserializer=lambda m: json.loads(m.decode('utf-8'))
 )
 
-conn = psycopg2.connect(dbname='transit', user='Sam')
+conn = psycopg2.connect(
+    dbname="transit",
+    user="Sam",
+    password="password",
+    host="postgres",
+    port=5432
+)
 cursor = conn.cursor()
 
 for message in consumer:
